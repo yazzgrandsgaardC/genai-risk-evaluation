@@ -1,0 +1,16 @@
+{
+  "evaluation_scope": "A09 diagnostic evaluation",
+  "evaluator": "RAGAS 0.4.3",
+  "evaluator_model": "gpt-4o-mini",
+  "case": {
+    "id": "A09",
+    "faithfulness": null,
+    "context_recall": 1.0,
+    "context_precision": 0.99999999998,
+    "errors": {
+      "faithfulness": "IncompleteOutputException",
+      "context_recall": null,
+      "context_precision": null
+    }
+  }
+}

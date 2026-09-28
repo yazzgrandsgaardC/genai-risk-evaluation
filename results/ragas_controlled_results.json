@@ -1,0 +1,235 @@
+{
+  "evaluation_scope": "Controlled evaluation - answerable cases A01-A20",
+  "evaluator": "RAGAS 0.4.3",
+  "evaluator_model": "gpt-4o-mini",
+  "results": [
+    {
+      "id": "A01",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A02",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A03",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A04",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A05",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A06",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A07",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A08",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A09",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A10",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A11",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A12",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A13",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A14",
+      "faithfulness": 0.8571428571428571,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A15",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A16",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A17",
+      "faithfulness": 1.0,
+      "context_recall": 0.6666666666666666,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A18",
+      "faithfulness": 0.8333333333333334,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A19",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 0.99999999998,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    },
+    {
+      "id": "A20",
+      "faithfulness": 0.0,
+      "context_recall": 1.0,
+      "context_precision": 0.999999999975,
+      "errors": {
+        "faithfulness": null,
+        "context_recall": null,
+        "context_precision": null
+      }
+    }
+  ],
+  "summary": {
+    "faithfulness_average": 0.9345238095238095,
+    "faithfulness_evaluable_cases": 20,
+    "context_recall_average": 0.9833333333333334,
+    "context_recall_evaluable_cases": 20,
+    "context_precision_average": 0.9999999999797501,
+    "context_precision_evaluable_cases": 20
+  }
+}
