@@ -1,3 +1,4 @@
+import argparse
 import csv
 import json
 import os
@@ -11,7 +12,29 @@ from rag_pipeline import load_index, retrieve, generate_answer
 
 TESTSET_PATH = Path("data/testsets/evaluation_set.csv")
 RESULTS_DIR = Path("results")
-OUTPUT_PATH = RESULTS_DIR / "controlled_results.json"
+
+VALID_CONTROL_MODES = ("none", "all")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run the fixed RAG evaluation set with either "
+            "baseline or controlled system behaviour."
+        )
+    )
+
+    parser.add_argument(
+        "--controls",
+        choices=VALID_CONTROL_MODES,
+        required=True,
+        help=(
+            "'none' runs the baseline configuration; "
+            "'all' enables controls C1-C3."
+        )
+    )
+
+    return parser.parse_args()
 
 
 def load_test_cases():
@@ -19,7 +42,14 @@ def load_test_cases():
         return list(csv.DictReader(file))
 
 
-def run_controlled():
+def get_output_path(controls):
+    if controls == "none":
+        return RESULTS_DIR / "repro_baseline_results.json"
+
+    return RESULTS_DIR / "repro_controlled_results.json"
+
+
+def run_evaluation(controls):
     load_dotenv()
 
     client = OpenAI(
@@ -28,9 +58,12 @@ def run_controlled():
 
     index, chunks = load_index()
     test_cases = load_test_cases()
+    output_path = get_output_path(controls)
 
+    print(f"Control mode: {controls}")
     print(f"Loaded {len(test_cases)} evaluation cases")
-    print(f"Loaded FAISS index with {index.ntotal} vectors\n")
+    print(f"Loaded FAISS index with {index.ntotal} vectors")
+    print(f"Output: {output_path}\n")
 
     results = []
 
@@ -53,7 +86,8 @@ def run_controlled():
         answer = generate_answer(
             question,
             retrieved_chunks,
-            client
+            client,
+            controls=controls
         )
 
         result = {
@@ -64,6 +98,7 @@ def run_controlled():
             "reference_source": case["reference_source"],
             "reference_answer": case["reference_answer"],
             "severity": case["severity"],
+            "control_mode": controls,
             "answer": answer,
             "retrieved_context": retrieved_chunks
         }
@@ -72,7 +107,7 @@ def run_controlled():
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as file:
+    with open(output_path, "w", encoding="utf-8") as file:
         json.dump(
             results,
             file,
@@ -80,9 +115,11 @@ def run_controlled():
             indent=2
         )
 
-    print("\nControlled evaluation complete.")
-    print(f"Saved {len(results)} results to {OUTPUT_PATH}")
+    print("\nEvaluation complete.")
+    print(f"Control mode: {controls}")
+    print(f"Saved {len(results)} results to {output_path}")
 
 
 if __name__ == "__main__":
-    run_controlled()
+    args = parse_args()
+    run_evaluation(args.controls)

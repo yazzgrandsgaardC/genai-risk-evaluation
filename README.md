@@ -30,6 +30,8 @@ A fixed dataset of 40 cases was created before evaluation:
 
 The same test cases were retained during controlled evaluation to make baseline and post-control behaviour comparable.
 
+Manual case-level review was used alongside automated evaluation because aggregate metrics did not reliably identify all observed evidence gaps.
+
 ## System
 
 The experimental RAG pipeline consists of:
@@ -63,7 +65,7 @@ Main technologies:
 
 The criteria are experimental project thresholds, not production risk appetite or regulatory requirements.
 
-## Baseline Findings
+## Historical Baseline Findings
 
 Manual review of the 20 answerable questions identified:
 
@@ -83,11 +85,17 @@ RAGAS baseline results:
 
 \* Faithfulness was successfully evaluated for 19/20 cases because one evaluator call failed.
 
-Despite the strong automated retrieval metrics, manual review identified retrieval failures. This demonstrated that automated evaluation metrics should not be treated as ground truth.
+Despite the strong automated retrieval metrics, manual review identified important case-level evidence gaps:
+
+- **A01:** retrieved passages were topically related to customer due-diligence procedures but did not contain the evidence required to answer the specific question;
+- **A11:** retrieved evidence supported only part of the expected answer;
+- **A13:** retrieved passages were relevant to association risk but omitted several concrete indicators required by the reference answer.
+
+This highlighted a distinction between **topical relevance** and **evidence sufficiency for a specific test objective**. Automated evaluation metrics were therefore treated as supporting evidence rather than ground truth.
 
 ## Controls
 
-Three controls were introduced after baseline evaluation:
+Three additional controls were introduced after baseline evaluation:
 
 **C1 – Retrieval confidence threshold**
 
@@ -99,13 +107,13 @@ Generation instructions require answers to remain directly supported by retrieve
 
 **C3 – Structured abstention**
 
-Insufficient-evidence cases use a consistent abstention response.
+Low-confidence or insufficient-evidence cases use a consistent abstention response.
 
 The 0.60 retrieval threshold was selected from the fixed evaluation dataset and is experimental rather than production-calibrated.
 
-## Controlled Results
+## Historical Controlled Results
 
-RAGAS results after controls:
+The original controlled evaluation produced the following RAGAS results:
 
 | Metric | Baseline | Controlled |
 |---|---:|---:|
@@ -119,15 +127,35 @@ The aggregate criteria remained satisfied, but manual review identified importan
 - A11 remained partially supported.
 - A20 changed from an acceptable baseline answer to an unnecessary abstention.
 
-A20 demonstrates a control trade-off: stricter evidence requirements can reduce unsupported answering while also increasing over-abstention.
+The historical A20 result demonstrated a possible control trade-off: stricter evidence requirements may reduce answer utility through over-abstention.
+
+## Reproducible Control Comparison
+
+The evaluation pipeline was subsequently refactored so that the same runner can execute two explicit configurations:
+
+- `controls=none` – reference configuration with core grounding and scope restrictions but without C1–C3;
+- `controls=all` – the same pipeline with C1–C3 enabled.
+
+Both configurations use the same corpus, FAISS index, retrieval settings and fixed 40-case dataset.
+
+In the subsequent comparison:
+
+- `controls=none` produced 0 exact structured abstentions;
+- `controls=all` produced 18 exact structured abstentions;
+- 12 cases had a top-1 retrieval score below the C1 threshold of 0.60;
+- none of the 20 answerable cases fell below that threshold in this dataset.
+
+This demonstrates that the additional controls materially increased the consistency of abstention behaviour in the tested cases. It does not by itself establish a general improvement in system safety.
+
+The historical A20 over-abstention was not reproduced in the subsequent `controls=all` run. It is therefore retained as evidence of a possible control trade-off and generation variability rather than treated as a deterministic failure.
 
 ## Unsupported and Out-of-Scope Evaluation
 
-The controlled system correctly handled all 9 valid unsupported/out-of-scope cases:
+The historical controlled system correctly handled all 9 valid unsupported/out-of-scope cases:
 
 **9/9 = 100%**
 
-One original test case (U04) was excluded from the primary metric after evaluation showed that the corpus contained relevant information, making it unsuitable as a clean unsupported-information case.
+One original test case, U04, was excluded from the primary metric after evaluation showed that the corpus contained relevant information, making it unsuitable as a clean unsupported-information case.
 
 The test case was documented rather than silently changed.
 
@@ -151,12 +179,13 @@ This result applies only to the defined direct attacks and does not demonstrate 
 
 The project showed that:
 
-- strong aggregate metrics can hide case-level failures;
+- strong aggregate metrics can hide case-level evidence gaps;
+- topically relevant retrieval does not necessarily provide sufficient evidence for a specific question;
 - retrieval remained the main technical limitation;
-- additional controls can introduce safety-versus-utility trade-offs;
+- additional controls increased consistency of abstention behaviour but may introduce safety-versus-utility trade-offs;
 - test-set quality itself must be reviewed;
-- automated evaluation should be combined with manual analysis;
-- AI risk evaluation should document both successful controls and residual limitations.
+- automated evaluation should be combined with manual case-level analysis;
+- evaluation findings should include residual limitations rather than only successful controls.
 
 ## Project Structure
 
@@ -173,12 +202,14 @@ genai-risk-evaluation/
 ├── results/
 │   ├── baseline_results.json
 │   ├── controlled_results.json
+│   ├── repro_baseline_results.json
+│   ├── repro_controlled_results.json
 │   ├── ragas_a09_diagnostic.json
 │   └── ragas_controlled_results.json
 ├── src/
 │   ├── build_index.py
 │   ├── rag_pipeline.py
-│   ├── run_controlled.py
+│   ├── run_evaluation.py
 │   ├── evaluate_baseline.py
 │   ├── evaluate_ragas.py
 │   └── promptfoo_provider.py
@@ -218,32 +249,48 @@ The `.env` file is excluded from version control.
 ### 3. Build the vector index
 
 ```bash
-python src/build_index.py
+python3 src/build_index.py
 ```
 
 This loads the regulatory documents, creates the text chunks, generates embeddings and saves the FAISS index locally in `data/index/`.
 
-### 4. Run the controlled evaluation
+### 4. Run the reference configuration
 
 ```bash
-python src/run_controlled.py
+python3 src/run_evaluation.py --controls none
 ```
 
-This runs the fixed 40-case evaluation set against the current controlled RAG system and writes the results to:
+This runs all 40 fixed evaluation cases and writes the output to:
 
 ```text
-results/controlled_results.json
+results/repro_baseline_results.json
 ```
 
-### 5. Run the RAGAS evaluation
+### 5. Run the controlled configuration
 
 ```bash
-python src/evaluate_ragas.py
+python3 src/run_evaluation.py --controls all
 ```
 
-This evaluates the answerable A01–A20 cases using Faithfulness, Context Recall and Context Precision.
+This runs the same 40 cases with C1–C3 enabled and writes the output to:
 
-### 6. Run the prompt-injection evaluation
+```text
+results/repro_controlled_results.json
+```
+
+Running both configurations through the same evaluation runner keeps the corpus, retrieval pipeline and test cases fixed while varying the additional controls.
+
+### 6. Run the RAGAS evaluation
+
+```bash
+python3 src/evaluate_ragas.py
+```
+
+RAGAS is used to evaluate the answerable A01–A20 cases using Faithfulness, Context Recall and Context Precision.
+
+Automated scores should be interpreted alongside manual case-level review because high aggregate retrieval metrics did not identify all observed evidence gaps.
+
+### 7. Run the prompt-injection evaluation
 
 Install Promptfoo separately through npm:
 
@@ -261,18 +308,40 @@ This evaluates the fixed P01–P10 direct prompt-injection cases defined in `pro
 
 ### Reproducibility Note
 
-The repository contains the original baseline outputs in `results/baseline_results.json`.
+The repository preserves the original historical outputs in:
 
-The current source code represents the controlled system after implementation of C1–C3. The original baseline implementation was not retained as a separate executable version, so the historical baseline cannot be regenerated directly from the current source code.
+```text
+results/baseline_results.json
+results/controlled_results.json
+```
 
-The current controlled system can be rebuilt from the included source documents and rerun using the steps above. Results involving LLM generation or LLM-based evaluation may vary between runs.
+The exact prompt configuration used to generate the original baseline was not preserved in version history. The historical baseline should therefore be treated as preserved evaluation evidence rather than an exactly regenerable result.
+
+The current source code provides explicit `controls=none` and `controls=all` configurations through the same evaluation runner. New comparison runs are stored separately from the historical artifacts:
+
+```text
+results/repro_baseline_results.json
+results/repro_controlled_results.json
+```
+
+Reproducibility here refers to the documented configuration, test set and evaluation procedure. Generated answers and LLM-based evaluation scores may vary between runs.
 
 ## Limitations
 
 This is a small experimental evaluation, not a production validation.
 
-The evaluation uses three source documents, 40 manually designed test cases and a limited set of direct prompt-injection attacks. Acceptance thresholds are experimental, and the retrieval threshold was derived from the same small evaluation dataset.
+Important limitations include:
 
-No claim is made that the system is generally safe, secure or compliant.
+- three source documents;
+- 40 manually designed test cases;
+- only direct prompt-injection attacks;
+- no indirect prompt-injection testing;
+- no production users or production traffic;
+- experimental acceptance thresholds;
+- a retrieval threshold derived from the same evaluation dataset;
+- LLM-based evaluation that may itself produce inconsistent judgements;
+- an original baseline prompt configuration that was not preserved in version history.
+
+No claim is made that the system is generally safe, secure, production-ready or compliant.
 
 See [`assessment/final_assessment.md`](assessment/final_assessment.md) for the complete assessment.
