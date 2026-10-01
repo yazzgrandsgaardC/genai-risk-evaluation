@@ -4,15 +4,29 @@ A practical AI risk evaluation project examining the performance, limitations an
 
 The project focuses on evaluating AI behaviour rather than building a production chatbot.
 
+## Evaluation Summary
+
+This project evaluates a small RAG assistant against a fixed 40-case test set covering grounding, retrieval failure, unsupported and out-of-scope requests, and direct prompt injection.
+
+Key results:
+
+- Manual review identified case-level retrieval failures even though the historical baseline achieved an aggregate RAGAS Context Recall of 1.000, showing that topically relevant context did not always provide sufficient evidence for the specific question.
+- The reproducible `controls=none` and `controls=all` comparison showed that both configurations correctly handled all 9 valid unsupported/out-of-scope cases and resisted all 10 defined direct prompt-injection attempts.
+- The additional controls therefore improved the consistency and standardisation of abstention behaviour, but the tested behavioural outcomes do not support attributing the prompt-injection result to C1–C3.
+- A retrieval confidence threshold of 0.60 did not reject any of the 20 answerable cases in the comparison, but the threshold was derived from the same small evaluation dataset and requires independent validation.
+- Historical and reproducible results are kept separate because the exact original baseline prompt was not preserved and LLM outputs are non-deterministic.
+
+The main technical finding is that aggregate automated metrics should be supplemented by case-level evidence review when evaluating RAG systems.
+
 ## Objective
 
-The system is designed as an experimental internal assistant that answers questions using a defined collection of public regulatory documents.
+The system is designed as an experimental internal assistant that answers questions using a defined collection of public regulatory documents from the Danish Financial Supervisory Authority (Finanstilsynet).
 
 Four AI risks were evaluated:
 
 1. **Grounding / Hallucination** – Does the generated answer remain supported by retrieved evidence?
 2. **Retrieval Failure** – Does the system retrieve the information required to answer the question?
-3. **Unsupported / Out-of-Scope Responses** – Does the system abstain when it lacks sufficient evidence or when a request is outside its intended use?
+3. **Unsupported / Out-of-Scope Responses** – Does the system abstain or refuse appropriately when evidence is unavailable or a request is outside its intended use?
 4. **Direct Prompt Injection** – Can user instructions cause the system to bypass its intended restrictions?
 
 ## Evaluation Approach
@@ -28,9 +42,7 @@ A fixed dataset of 40 cases was created before evaluation:
 - 5 out-of-scope questions
 - 10 direct prompt-injection attempts
 
-The same test cases were retained during controlled evaluation to make baseline and post-control behaviour comparable.
-
-Manual case-level review was used alongside automated evaluation because aggregate metrics did not reliably identify all observed evidence gaps.
+The same cases were retained during controlled evaluation. Manual case-level review was used alongside automated evaluation because aggregate metrics did not reliably identify all observed evidence gaps.
 
 ## System
 
@@ -73,9 +85,9 @@ Manual review of the 20 answerable questions identified:
 - 2 partial answers
 - 2 retrieval failures
 
-The main observed weakness was retrieval. Relevant evidence was not consistently retrieved for all answerable questions.
+The main observed weakness was retrieval.
 
-RAGAS baseline results:
+Historical baseline RAGAS results:
 
 | Metric | Result |
 |---|---:|
@@ -85,35 +97,38 @@ RAGAS baseline results:
 
 \* Faithfulness was successfully evaluated for 19/20 cases because one evaluator call failed.
 
-Despite the strong automated retrieval metrics, manual review identified important case-level evidence gaps:
+Despite the strong aggregate retrieval metrics, manual review identified important case-level evidence gaps:
 
-- **A01:** retrieved passages were topically related to customer due-diligence procedures but did not contain the evidence required to answer the specific question;
-- **A11:** retrieved evidence supported only part of the expected answer;
+- **A01:** retrieved passages were topically related to customer due-diligence procedures but did not contain the evidence required to answer the specific question.
+- **A11:** retrieved evidence supported only part of the expected answer.
 - **A13:** retrieved passages were relevant to association risk but omitted several concrete indicators required by the reference answer.
+- **A19:** the answer was broadly correct but incomplete relative to the expected answer.
 
 This highlighted a distinction between **topical relevance** and **evidence sufficiency for a specific test objective**. Automated evaluation metrics were therefore treated as supporting evidence rather than ground truth.
 
 ## Controls
 
-Three additional controls were introduced after baseline evaluation:
+Three additional controls were introduced after baseline evaluation.
 
-**C1 – Retrieval confidence threshold**
+### C1 – Retrieval Confidence Threshold
 
 The system abstains before generation when the top retrieval score is below 0.60.
 
-**C2 – Evidence sufficiency**
+The threshold was selected using the fixed evaluation dataset. It is therefore dataset-derived and experimental rather than production-calibrated.
 
-Generation instructions require answers to remain directly supported by retrieved evidence and avoid filling evidence gaps.
+### C2 – Evidence Sufficiency
 
-**C3 – Structured abstention**
+Generation instructions require answers to remain directly supported by retrieved evidence, identify insufficient evidence and avoid filling evidence gaps.
 
-Low-confidence or insufficient-evidence cases use a consistent abstention response.
+### C3 – Structured Abstention
 
-The 0.60 retrieval threshold was selected from the fixed evaluation dataset and is experimental rather than production-calibrated.
+Low-confidence or insufficient-evidence cases can use a consistent abstention response:
+
+> The approved document collection does not contain sufficient information to answer this question.
 
 ## Historical Controlled Results
 
-The original controlled evaluation produced the following RAGAS results:
+The original controlled evaluation produced:
 
 | Metric | Baseline | Controlled |
 |---|---:|---:|
@@ -121,49 +136,50 @@ The original controlled evaluation produced the following RAGAS results:
 | Context Recall | 1.000 | 0.983 |
 | Context Precision | 0.990 | 1.000 |
 
-The aggregate criteria remained satisfied, but manual review identified important residual issues:
+The aggregate criteria remained satisfied, but the controls did not eliminate the manually observed retrieval limitations. A01 and A13 remained retrieval failures and A11 remained partially supported.
 
-- A01 and A13 remained retrieval failures.
-- A11 remained partially supported.
-- A20 changed from an acceptable baseline answer to an unnecessary abstention.
+The historical controlled run also produced an unnecessary abstention on A20. That behaviour was not reproduced in the later `controls=all` run, so it is treated as evidence of a possible control trade-off and generation variability rather than a deterministic C2 failure.
 
-The historical A20 result demonstrated a possible control trade-off: stricter evidence requirements may reduce answer utility through over-abstention.
+## Reproducible Behavioural Comparison
 
-## Reproducible Control Comparison
+The pipeline was refactored so the same runner can execute:
 
-The evaluation pipeline was subsequently refactored so that the same runner can execute two explicit configurations:
-
-- `controls=none` – reference configuration with core grounding and scope restrictions but without C1–C3;
+- `controls=none` – core grounding and scope restrictions, without additional controls C1–C3.
 - `controls=all` – the same pipeline with C1–C3 enabled.
 
-Both configurations use the same corpus, FAISS index, retrieval settings and fixed 40-case dataset.
+Both configurations use the same corpus, 562-vector FAISS index, retrieval settings and fixed 40-case dataset.
 
-In the subsequent comparison:
+The comparison was reviewed according to whether each response satisfied the case's expected behaviour rather than whether it matched C3's exact abstention wording.
 
-- `controls=none` produced 0 exact structured abstentions;
-- `controls=all` produced 18 exact structured abstentions;
-- 12 cases had a top-1 retrieval score below the C1 threshold of 0.60;
-- none of the 20 answerable cases fell below that threshold in this dataset.
+| Category | Cases assessed | `controls=none` | `controls=all` |
+|---|---:|---:|---:|
+| Valid unsupported | 4* | 4/4 correctly handled | 4/4 correctly handled |
+| Out-of-scope | 5 | 5/5 correctly handled | 5/5 correctly handled |
+| Direct prompt injection | 10 | 10/10 resisted | 10/10 resisted |
 
-This demonstrates that the additional controls materially increased the consistency of abstention behaviour in the tested cases. It does not by itself establish a general improvement in system safety.
+\* U04 was excluded because the corpus contained information supporting the question, so it was not a valid unsupported-information case.
 
-The historical A20 over-abstention was not reproduced in the subsequent `controls=all` run. It is therefore retained as evidence of a possible control trade-off and generation variability rather than treated as a deterministic failure.
+For the 20 answerable cases, no case fell below the C1 retrieval threshold in this comparison. The additional controls did not resolve the known semantic retrieval weaknesses, because C1 operates on retrieval score rather than whether the retrieved passages contain the specific evidence required by the question.
+
+`controls=all` produced more standardised abstention wording than `controls=none`, but exact C3 wording is an implementation property rather than an independent measure of control effectiveness. It is therefore not used as the primary behavioural comparison.
+
+An important result is that the reference configuration already resisted all 10 defined direct prompt-injection attempts. The observed prompt-injection result should therefore be attributed to the system's core grounding, scope and instruction restrictions in the tested cases, not to C1–C3 alone.
 
 ## Unsupported and Out-of-Scope Evaluation
 
-The historical controlled system correctly handled all 9 valid unsupported/out-of-scope cases:
+Across the reproducible comparison, both configurations correctly handled all 9 valid R3 cases:
 
-**9/9 = 100%**
+**9/9 = 100% for `controls=none` and 9/9 = 100% for `controls=all`.**
 
-One original test case, U04, was excluded from the primary metric after evaluation showed that the corpus contained relevant information, making it unsuitable as a clean unsupported-information case.
-
-The test case was documented rather than silently changed.
+U04 was excluded from the primary metric after evaluation showed that the corpus contained relevant information supporting the requested five-year retention answer. The case was documented rather than silently changed.
 
 ## Prompt-Injection Evaluation
 
-The fixed P01–P10 direct prompt-injection cases were evaluated with Promptfoo against predefined expected behaviour.
+Manual behavioural review of the reproducible comparison found that both configurations resisted all P01–P10 direct prompt-injection cases:
 
-Final result:
+**10/10 resisted for `controls=none` and 10/10 resisted for `controls=all`.**
+
+The controlled configuration was also evaluated with Promptfoo against predefined expected behaviour. The final Promptfoo run recorded:
 
 - 10 tests
 - 10 passed
@@ -173,19 +189,17 @@ Final result:
 - **Attack Success Rate: 0%**
 - 0 successful high-severity attacks
 
-This result applies only to the defined direct attacks and does not demonstrate general prompt-injection resistance.
+These results apply only to the defined direct attacks and do not demonstrate general prompt-injection resistance.
 
 ## Key Takeaways
 
-The project showed that:
-
-- strong aggregate metrics can hide case-level evidence gaps;
-- topically relevant retrieval does not necessarily provide sufficient evidence for a specific question;
-- retrieval remained the main technical limitation;
-- additional controls increased consistency of abstention behaviour but may introduce safety-versus-utility trade-offs;
-- test-set quality itself must be reviewed;
-- automated evaluation should be combined with manual case-level analysis;
-- evaluation findings should include residual limitations rather than only successful controls.
+- Strong aggregate metrics can hide case-level evidence gaps.
+- Topically relevant retrieval does not necessarily provide sufficient evidence for a specific question.
+- Retrieval remained the main technical limitation.
+- Both reproducible configurations correctly handled the valid unsupported/out-of-scope cases and resisted the defined direct prompt-injection cases.
+- C1–C3 primarily changed the consistency and conservatism of abstention behaviour in this test set rather than producing a measurable improvement in the already-correct R3/R4 behavioural outcomes.
+- Test-set quality itself must be reviewed; U04 demonstrated how an invalid case can distort a metric.
+- Automated evaluation should be combined with manual case-level analysis.
 
 ## Project Structure
 
@@ -260,7 +274,7 @@ This loads the regulatory documents, creates the text chunks, generates embeddin
 python3 src/run_evaluation.py --controls none
 ```
 
-This runs all 40 fixed evaluation cases and writes the output to:
+Output:
 
 ```text
 results/repro_baseline_results.json
@@ -272,13 +286,13 @@ results/repro_baseline_results.json
 python3 src/run_evaluation.py --controls all
 ```
 
-This runs the same 40 cases with C1–C3 enabled and writes the output to:
+Output:
 
 ```text
 results/repro_controlled_results.json
 ```
 
-Running both configurations through the same evaluation runner keeps the corpus, retrieval pipeline and test cases fixed while varying the additional controls.
+Running both configurations through the same runner keeps the corpus, retrieval pipeline and test cases fixed while varying the additional controls.
 
 ### 6. Run the RAGAS evaluation
 
@@ -286,9 +300,7 @@ Running both configurations through the same evaluation runner keeps the corpus,
 python3 src/evaluate_ragas.py
 ```
 
-RAGAS is used to evaluate the answerable A01–A20 cases using Faithfulness, Context Recall and Context Precision.
-
-Automated scores should be interpreted alongside manual case-level review because high aggregate retrieval metrics did not identify all observed evidence gaps.
+RAGAS is used to evaluate the answerable A01–A20 cases using Faithfulness, Context Recall and Context Precision. Automated scores should be interpreted alongside manual case-level review.
 
 ### 7. Run the prompt-injection evaluation
 
@@ -317,7 +329,7 @@ results/controlled_results.json
 
 The exact prompt configuration used to generate the original baseline was not preserved in version history. The historical baseline should therefore be treated as preserved evaluation evidence rather than an exactly regenerable result.
 
-The current source code provides explicit `controls=none` and `controls=all` configurations through the same evaluation runner. New comparison runs are stored separately from the historical artifacts:
+The current source code provides explicit `controls=none` and `controls=all` configurations through the same evaluation runner. New comparison runs are stored separately:
 
 ```text
 results/repro_baseline_results.json
@@ -340,7 +352,8 @@ Important limitations include:
 - experimental acceptance thresholds;
 - a retrieval threshold derived from the same evaluation dataset;
 - LLM-based evaluation that may itself produce inconsistent judgements;
-- an original baseline prompt configuration that was not preserved in version history.
+- the exact original baseline prompt configuration was not preserved in version history;
+- generative outputs may vary between runs.
 
 No claim is made that the system is generally safe, secure, production-ready or compliant.
 
